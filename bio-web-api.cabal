@@ -23,7 +23,7 @@ Library
                      Bio.Web.GProfiler.Types
                      
   Extensions:        
-  Ghc-Options:       -Wall -O2 
+  Ghc-Options:       -Wall -O2 -fno-warn-unused-do-bind
 
 Source-Repository head
   Type:           git
