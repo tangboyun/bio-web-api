@@ -25,7 +25,7 @@ import Data.List.Split
 import Network.Shpider
 import Text.HTML.TagSoup
 
-
+defaultPara :: ConvertPara
 defaultPara = CPara Human ENSG Prefix_PUBMED False
 
 queryGConvert :: ConvertPara -> ByteString -> IO [GeneRecord]
