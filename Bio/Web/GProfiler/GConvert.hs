@@ -29,6 +29,7 @@ import Text.HTML.TagSoup
 defaultPara :: ConvertPara
 defaultPara = CPara Human ENSG Prefix_PUBMED False
 
+-- | Convert a list of GeneID to another alias.
 queryGConvert :: ConvertPara -> ByteString -> IO [GeneRecord]
 queryGConvert para text = runShpider $ do
   patiently waitTime download gCovertUrl
