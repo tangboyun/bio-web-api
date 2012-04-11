@@ -1,0 +1,31 @@
+Name:                bio-web-api
+Version:             0.0.1
+License:             BSD
+License-file:        LICENSE
+Cabal-Version:       >= 1.6
+Author:              Boyun Tang
+Maintainer:          Boyun Tang <tangboyun@hotmail.com>
+
+Category:            Bioinformatics
+Synopsis:            Web spiders for some useful bioinformatic web service.
+Description:         TODO
+
+Tested-With:         GHC==7.4.1
+Build-Type:          Simple
+Data-Files:          README
+
+Library
+  Build-Depends:     base >= 4 && < 5, bytestring >= 0.9.1,
+                     shpider >= 0.2.1.1, split >= 0.1.4.2,
+                     tagsoup >= 0.12.6
+
+  Exposed-modules:   Bio.Web.GProfiler.GConvert
+                     Bio.Web.GProfiler.Types
+                     
+  Extensions:        
+  Ghc-Options:       -Wall -O2 
+
+Source-Repository head
+  Type:           git
+  Location:       https://github.com/tangboyun/bio-web-api
+
