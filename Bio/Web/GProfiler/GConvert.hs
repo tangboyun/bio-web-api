@@ -25,6 +25,7 @@ import Data.List.Split
 import Network.Shpider
 import Text.HTML.TagSoup
 
+-- | Default: change human GeneID from RefSeq to ENSG
 defaultPara :: ConvertPara
 defaultPara = CPara Human ENSG Prefix_PUBMED False
 
