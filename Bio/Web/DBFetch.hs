@@ -24,3 +24,4 @@ import Bio.Web.DBFetch.Types
 
 seqFetch :: [ByteString] -> IO SeqRecord
 seqFetch geneIds = runShpider $ do
+  undefined
