@@ -1,6 +1,6 @@
 Name:                bio-web-api
 Version:             0.0.1
-License:             BSD
+License:             BSD3
 License-file:        LICENSE
 Cabal-Version:       >= 1.6
 Author:              Boyun Tang
