@@ -30,7 +30,7 @@ patiently waitTime f v = do
     _  -> do
       let waitTime' = if waitTime <= 3600
                       then waitTime * 2
-                      else waitTime
+                      else 3600
       liftIO $ hPutStrLn stderr 
               ("ERROR: " ++ show c ++ 
                "\nWaiting " ++ show waitTime ++ 
