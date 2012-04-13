@@ -21,6 +21,7 @@ Library
 
   Exposed-modules:   Bio.Web.GProfiler.GConvert
                      Bio.Web.GProfiler.Types
+                     Bio.Web.MicroTV4 
                      
   Extensions:        
   Ghc-Options:       -Wall -O2 -fno-warn-unused-do-bind
