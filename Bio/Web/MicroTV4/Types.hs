@@ -24,7 +24,7 @@ data GeneInfo = GI {
   ,refSeqID :: ![ByteString]
   ,description :: !ByteString
   ,keggPathways :: !(Maybe ByteString)
-  ,onChromosome :: {-# UNPACK #-} !Int
+  ,chromosome :: {-# UNPACK #-} !Int
   } deriving (Show)
                 
 data MiRNA_impl = RI_impl {
@@ -43,7 +43,7 @@ data MiRNAInfo = RI {
   ,relatedDiseases :: !(Maybe [Disease])
   } deriving (Show)
 
-data Disease = D {
+data Disease = Di {
    diseaseName :: !ByteString
   ,references :: ![ByteString] -- pubmed id
   } deriving (Show)

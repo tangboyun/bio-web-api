@@ -22,11 +22,30 @@ import           Data.Attoparsec.Char8
 import           Data.ByteString        (ByteString)
 import qualified Data.ByteString.Char8  as B8
 import           Data.List.Split
+import Data.Char (isPrint)
+import Data.Maybe
 
+-- http://www.ncbi.nlm.nih.gov/sites/entrez?db=Pubmed&term=17308078[uid]%20OR%2018413726[uid]%20OR%2018413726[uid]%20OR%2017308078[uid]%20OR%2020068076[uid]%20OR%2020797623[uid]%20OR%2016530703[uid]%20OR%2019825969[uid]
+extractPUBMEDID :: ByteString -> [ByteString]
+extractPUBMEDID = fromJust . maybeResult . flip feed "" . parse parseNCBILink
+  
+parseNCBILink :: Parser [ByteString]
+parseNCBILink = do
+  str <- string "http://www.ncbi.nlm.nih.gov/sites/entrez?db=Pubmed&term=" *> takeByteString 
+  return $! map (f . B8.pack) $ splitOn "%20OR%20" $ B8.unpack str
+  where f = \e -> foldr ($) e $ replicate 5 B8.init -- remove tailing "[uid]"
+
+parseRIsAndGIs :: Parser ([MiRNA_impl],[GeneInfo])
+parseRIsAndGIs = do
+  ris <- many1 $ parseRI <* skipSpace
+  gis <- many1 $ parseGI <* skipSpace
+  return (ris,gis)
+  
 parseGI :: Parser GeneInfo
 parseGI = do
   string "Ensembl Gene ID:" *> skipSpace
-  enId <- takeWhile1 (not . isSpace) <* skipSpace
+  enId <- takeWhile1 (not . isSpace) <* skipSpace <* 
+          char '\160' <* skipSpace -- damn &nbsp; can't be parsed as ' '
   string "Gene Name:" *> skipSpace
   ge <- takeWhile1 (not . isSpace) <* skipSpace
   string "Refseq IDs:" *> skipSpace
@@ -34,7 +53,8 @@ parseGI = do
   des <- manyTill anyChar (try $ string " External links:") <* skipSpace
   manyTill anyChar (try $ string "Kegg pathways:") <* skipSpace
   kegg <- fmap (\_ -> Nothing)
-          (string "No related KEGG pathways." *> skipSpace) <|>
+          (string "No related KEGG pathways." *> 
+           skipSpace *> string "Chromosome:" *> skipSpace) <|>
           fmap (Just . B8.pack) (manyTill anyChar $ try $ 
                      skipSpace *> string "Chromosome:" <* skipSpace)
   ch <- decimal
@@ -44,8 +64,8 @@ parseGI = do
   
 parseRI :: Parser MiRNA_impl
 parseRI = do
-  string "Name:" *> skipSpace
-  mi <- takeWhile1 (not . isSpace) <* skipSpace
+  string "Name:" *> skipSpace 
+  mi <- takeWhile1 (not . isSpace) <* skipSpace <* char '\160' <* skipSpace
   string "Alternative description:" *> skipSpace
   miAcc <- takeWhile1 (not . isSpace) <* skipSpace
   string "Related names:" *> skipSpace
@@ -55,14 +75,15 @@ parseRI = do
              fmap Just (takeWhile1 (not . isSpace) <* skipSpace)
   string "miRNA sequence:" *> skipSpace
   miS <- takeWhile1 (not . isSpace) <* skipSpace
-  string "External links:" *> skipSpace *> string "miRBase" *>
+  string "External links:" *> 
+    skipSpace *> string "miRBase" *>
     skipSpace *> string "Related diseases:" *> 
     many1 (satisfy (/= '\n'))
   return $ RI_impl mi miAcc reName miS
   
 parseMRs :: Parser [MR_impl]
 parseMRs = do
-  many1 $ parseMR_impl <* skipSpace
+  many1 $ skipSpace *> parseMR_impl 
   
 parseMR_impl :: Parser MR_impl
 parseMR_impl = do
