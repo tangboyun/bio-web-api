@@ -22,7 +22,6 @@ import           Data.Attoparsec.Char8
 import           Data.ByteString        (ByteString)
 import qualified Data.ByteString.Char8  as B8
 import           Data.List.Split
-import Data.Char (isPrint)
 import Data.Maybe
 
 -- http://www.ncbi.nlm.nih.gov/sites/entrez?db=Pubmed&term=17308078[uid]%20OR%2018413726[uid]%20OR%2018413726[uid]%20OR%2017308078[uid]%20OR%2020068076[uid]%20OR%2020797623[uid]%20OR%2016530703[uid]%20OR%2019825969[uid]
@@ -65,7 +64,7 @@ parseGI = do
 parseRI :: Parser MiRNA_impl
 parseRI = do
   string "Name:" *> skipSpace 
-  mi <- takeWhile1 (not . isSpace) <* skipSpace <* char '\160' <* skipSpace
+  mi' <- takeWhile1 (not . isSpace) <* skipSpace <* char '\160' <* skipSpace
   string "Alternative description:" *> skipSpace
   miAcc <- takeWhile1 (not . isSpace) <* skipSpace
   string "Related names:" *> skipSpace
@@ -79,7 +78,7 @@ parseRI = do
     skipSpace *> string "miRBase" *>
     skipSpace *> string "Related diseases:" *> 
     many1 (satisfy (/= '\n'))
-  return $ RI_impl mi miAcc reName miS
+  return $ RI_impl mi' miAcc reName miS
   
 parseMRs :: Parser [MR_impl]
 parseMRs = do
@@ -87,16 +86,16 @@ parseMRs = do
   
 parseMR_impl :: Parser MR_impl
 parseMR_impl = do
-  skipSpace *> decimal *> skipSpace 
-  ensg <- parseENSGID <* skipSpace
-  gn <- parseGeneSymb <* skipSpace
-  mi <- takeWhile1 (not . isSpace) <* skipSpace
-  miTG <- double <* skipSpace
-  snr <- double <* skipSpace
-  pre <- double <* skipSpace
+  skipSpace *> (decimal :: Parser Integer) *> skipSpace 
+  ensg' <- parseENSGID <* skipSpace
+  gn' <- parseGeneSymb <* skipSpace
+  mi' <- takeWhile1 (not . isSpace) <* skipSpace
+  miTG' <- double <* skipSpace
+  snr' <- double <* skipSpace
+  pre' <- double <* skipSpace
   manyTill anyChar (try $ string "Binding Type 3' UTR position Score Conservation")
   bss <- many1 $ skipSpace *> parseBindingSite 
-  return $ MR ensg gn mi miTG snr pre bss
+  return $ MR ensg' gn' mi' miTG' snr' pre' bss
   
 parseBindingSite :: Parser BindingSite  
 parseBindingSite = do
@@ -141,7 +140,7 @@ parseGarbage :: Parser ()
 parseGarbage = do
   string "Conserved species:" *> 
     manyTill anyChar (try $ parseTerminator) *> return ()
-
-parseTerminator =
-  string "(miRNA) 3' " *> many1 (satisfy (not . isDigit)) *> string "5'"
+  where
+    parseTerminator =
+      string "(miRNA) 3' " *> many1 (satisfy (not . isDigit)) *> string "5'"
   

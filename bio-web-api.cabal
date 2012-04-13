@@ -17,7 +17,8 @@ Data-Files:          README
 Library
   Build-Depends:     base >= 4 && < 5, bytestring >= 0.9.1,
                      shpider >= 0.2.1.1, split >= 0.1.4.2,
-                     tagsoup >= 0.12.6
+                     tagsoup >= 0.12.6, containers >= 0.4.2.1,
+                     attoparsec >= 0.10.1.1
 
   Exposed-modules:   Bio.Web.GProfiler.GConvert
                      Bio.Web.GProfiler.Types

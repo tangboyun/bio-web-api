@@ -62,9 +62,9 @@ data PosOnCh = P {
   ,end :: {-# UNPACK #-} !Int
   } deriving (Show)
                
-data CoP = CoP {-# UNPACK #-} !Bool 
-           {-# UNPACK #-} !Bool 
-           {-# UNPACK #-} !Bool
+data CoP = CoP !Bool 
+           !Bool 
+           !Bool
            deriving (Show)
                     
 data MR_impl = MR {                    

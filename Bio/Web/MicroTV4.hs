@@ -14,7 +14,6 @@ module Bio.Web.MicroTV4
        (
          queryMicroTV4
        , queryMicroTV4_impl
-       , testURL
        )
        where
 import           Bio.Web.Internal.Patiently
@@ -34,7 +33,7 @@ import qualified Data.Map as M
 
 
 -- testOneResultURL = "http://diana.cslab.ece.ntua.gr/DianaTools/index.php?r=microtv4/results&descr=&genes=ENSG00000149948&mirnas=hsa-let-7a&threshold=0.3"
-testURL = "http://diana.cslab.ece.ntua.gr/DianaTools/index.php?r=microtv4/results&genes=ENSG00000149948%20ENSG00000179361&mirnas=hsa-let-7a%20hsa-let-7c%20hsa-miR-98%20hsa-miR-17-star%20&descr=&threshold=0.3"
+-- testURL = "http://diana.cslab.ece.ntua.gr/DianaTools/index.php?r=microtv4/results&genes=ENSG00000149948%20ENSG00000179361&mirnas=hsa-let-7a%20hsa-let-7c%20hsa-miR-98%20hsa-miR-17-star%20&descr=&threshold=0.3"
 
 -- | 30 targets per page
 -- testMultiPageURL = "http://diana.cslab.ece.ntua.gr/DianaTools/index.php?r=microtv4/results&genes=ENSG00000149948&descr=&threshold=0.3"
@@ -49,20 +48,20 @@ waitTime = 10
 
 
 queryMicroTV4 :: [ByteString] -> [ByteString] -> Double -> IO [[MicroTRecord]]
-queryMicroTV4 miRNAs genes threshold = do
+queryMicroTV4 miRNAs genes threshold = 
   forM genes $ \gs -> 
     fmap concat $ forM (splitEvery 30 miRNAs) $ \mis -> do
       let miStr = pack "&mirnas=" `B8.append` B8.intercalate (pack "%20") mis
           geStr = pack "&genes=" `B8.append` gs 
-          thres = pack "&threshold=" `B8.append` (B8.pack $ show threshold)
+          thres = pack "&threshold=" `B8.append` B8.pack (show threshold)
           url = urlBase `B8.append` miStr `B8.append` geStr `B8.append` thres
       queryMicroTV4_impl url
   where
     urlBase = pack "http://diana.cslab.ece.ntua.gr/DianaTools/index.php?r=microtv4/results&descr="
 
 queryMicroTV4_impl :: ByteString -> IO [MicroTRecord]
-queryMicroTV4_impl txt = runShpider $ do    
-  (_,p) <- patiently waitTime download testOnlyMiRNA
+queryMicroTV4_impl url = runShpider $ do    
+  (_,p) <- patiently waitTime download (unpack url)
   -- Remove noise.
   let ts' = takeWhile -- remove footer
             (\tag ->
@@ -93,8 +92,8 @@ queryMicroTV4_impl txt = runShpider $ do
                           then Nothing 
                           else Just $ 
                                map
-                               ((\(TagOpen _ (("href",url):[]):(TagText dname):[]) -> 
-                                  Di (pack dname) (extractPUBMEDID $ pack url)) . take 2) e) . 
+                               ((\(TagOpen _ (("href",url'):[]):TagText dname:[]) -> 
+                                  Di (pack dname) (extractPUBMEDID $ pack url')) . take 2) e) . 
                         tail .  -- get links with diseases name
                         groupBy (\_ b -> b ~/= TagOpen "a" []) . 
                         tail . dropWhile isTagText . 
@@ -104,7 +103,7 @@ queryMicroTV4_impl txt = runShpider $ do
                           ,TagClose "td"
                           ,TagClose "tr"
                           ,TagClose "table"] `isPrefixOf`) . snd) . 
-                        (\ts -> zip (inits ts) (tails ts))) $ 
+                        (\ts_ -> zip (inits ts_) (tails ts_))) $ 
                    tail $ splitOn [TagText "Related diseases:"] ts1
           cop_is = map 
                    ((\(a:b:c:[]) -> CoP a b c) . 
@@ -117,9 +116,9 @@ queryMicroTV4_impl txt = runShpider $ do
                       "images/small_box_" `isPrefixOf` img_name) $ 
                     filter (~== TagOpen "img" []) ts2        
           str1 = B8.unwords $ map (pack . fromTagText) $ 
-                 filter isTagText $ ts1
+                 filter isTagText ts1
           str2 = B8.unwords $ map (pack . fromTagText) $ 
-                 filter isTagText $ ts2
+                 filter isTagText ts2
           (mis,gis) = fromJust $ maybeResult $ -- Input both miRNA & Gene or DIE
                       flip parse str1 $
                       manyTill anyChar 
@@ -136,6 +135,6 @@ queryMicroTV4_impl txt = runShpider $ do
           mr_impls = fromJust $ maybeResult $ 
                      parse (string (pack "Also Predicted") *> parseMRs) str2
       return $! map 
-        (\(MR eid _ mi a b c d,cop) ->  
-          MTR (giMap M.! eid) (riMap M.! mi) a b c cop d) $ 
+        (\(MR eid _ mi' a b c d,cop) ->  
+          MTR (giMap M.! eid) (riMap M.! mi') a b c cop d) $ 
         zip mr_impls cop_is
