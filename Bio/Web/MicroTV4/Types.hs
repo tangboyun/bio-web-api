@@ -23,8 +23,8 @@ data GeneInfo = GI {
   ,geneName :: !ByteString
   ,refSeqID :: ![ByteString]
   ,description :: !ByteString
-  ,keggPathways :: !(Maybe ByteString)
-  ,chromosome :: {-# UNPACK #-} !Int
+  ,keggPathways :: !(Maybe [ByteString])
+  ,chromosome :: !ByteString -- X,1,2,3,4 ...
   } deriving (Show)
                 
 data MiRNA_impl = RI_impl {
@@ -57,9 +57,9 @@ data BindingSite = BS {
   } deriving (Show)
                    
 data PosOnCh = P {
-   chrome :: {-# UNPACK #-} !Int
-  ,beg :: {-# UNPACK #-} !Int
-  ,end :: {-# UNPACK #-} !Int
+   chrome :: !ByteString
+  ,beg :: ![Int]
+  ,end :: ![Int]
   } deriving (Show)
                
 data CoP = CoP !Bool 

@@ -14,7 +14,15 @@ module Bio.Web.DBFetch.Types
        
        where
 import Data.Char
+import Bio.Sequence.GB.Types
 
+
+data Para = Para DB Format
+data SeqRecord = SR GBRecord
+               | Other
+                 deriving (Show)
+                 
+            
 data DB = EDAM
         | EMBL
         | EMBLCDS
@@ -78,7 +86,7 @@ data Format = FORMAT_Default
 data Style = Raw
              deriving (Show)
 
-class Input a where
+class (Show a) => Input a where
   toPara :: a -> String
   toPara = map toLower . show
   
@@ -88,4 +96,4 @@ instance Input Format where
   toPara format =
     case format of
       FORMAT_EMBLXml12 -> "emblxml-1.2"
-      _                -> map toLower . drop 7 . show
+      _                -> map toLower $ drop 7 $ show format

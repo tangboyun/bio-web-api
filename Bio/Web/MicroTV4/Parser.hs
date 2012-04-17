@@ -44,19 +44,19 @@ parseGI :: Parser GeneInfo
 parseGI = do
   string "Ensembl Gene ID:" *> skipSpace
   enId <- takeWhile1 (not . isSpace) <* skipSpace <* 
-          char '\160' <* skipSpace -- damn &nbsp; can't be parsed as ' '
+          char '\160' <* skipSpace <?> "ERROR: parsing ENSG id." -- damn &nbsp; can't be parsed as ' ' 
   string "Gene Name:" *> skipSpace
-  ge <- takeWhile1 (not . isSpace) <* skipSpace
+  ge <- takeWhile1 (not . isSpace) <* skipSpace <?> "ERROR: parsing GeneName."
   string "Refseq IDs:" *> skipSpace
-  refStr <- manyTill anyChar (try $ string " Description:") <* skipSpace
-  des <- manyTill anyChar (try $ string " External links:") <* skipSpace
+  refStr <- manyTill anyChar (try $ skipSpace *> string "Description:") <* skipSpace
+  des <- manyTill anyChar (try $ skipSpace *> string "External links:") <* skipSpace
   manyTill anyChar (try $ string "Kegg pathways:") <* skipSpace
   kegg <- fmap (\_ -> Nothing)
           (string "No related KEGG pathways." *> 
            skipSpace *> string "Chromosome:" *> skipSpace) <|>
-          fmap (Just . B8.pack) (manyTill anyChar $ try $ 
+          fmap (Just . map B8.pack . splitOn "\t") (manyTill anyChar $ try $ 
                      skipSpace *> string "Chromosome:" <* skipSpace)
-  ch <- decimal
+  ch <- takeWhile1 (not . isSpace) 
   return $ GI enId ge (map B8.pack $ splitOn ", " refStr) (B8.pack des)
               kegg ch
     
@@ -64,16 +64,16 @@ parseGI = do
 parseRI :: Parser MiRNA_impl
 parseRI = do
   string "Name:" *> skipSpace 
-  mi' <- takeWhile1 (not . isSpace) <* skipSpace <* char '\160' <* skipSpace
+  mi' <- takeWhile1 (not . isSpace) <* skipSpace <* char '\160' <* skipSpace <?> "ERROR: parsing  miRNA id."
   string "Alternative description:" *> skipSpace
-  miAcc <- takeWhile1 (not . isSpace) <* skipSpace
+  miAcc <- takeWhile1 (not . isSpace) <* skipSpace <?> "ERROR: parsing miRNA accession."
   string "Related names:" *> skipSpace
   reName <- fmap (\_ -> Nothing) 
             (string "There are no related names for this entry." *> 
              skipSpace ) <|>
              fmap Just (takeWhile1 (not . isSpace) <* skipSpace)
   string "miRNA sequence:" *> skipSpace
-  miS <- takeWhile1 (not . isSpace) <* skipSpace
+  miS <- takeWhile1 (not . isSpace) <* skipSpace <?> "ERROR: parsing miRNA sequence."
   string "External links:" *> 
     skipSpace *> string "miRBase" *>
     skipSpace *> string "Related diseases:" *> 
@@ -131,10 +131,13 @@ parsePos = do
 parsePCH :: Parser PosOnCh
 parsePCH = do
   string "Position on chromosome:" *> skipSpace
-  d1 <- decimal <* char ':'
-  d2 <- decimal <* char '-'
+  s1 <- manyTill anyChar (try $ char ':')
+  d2 <- decimal 
+  d2s <- optional $ many1 $ char ';' *> decimal
+  char '-'
   d3 <- decimal 
-  return $ P d1 d2 d3
+  d3s <- optional $ many1 $ char ';' *> decimal
+  return $ P (B8.pack s1) (d2:fromMaybe [] d2s) (d3:fromMaybe [] d3s)
 
 parseGarbage :: Parser ()
 parseGarbage = do
