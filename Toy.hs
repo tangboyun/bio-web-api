@@ -40,7 +40,7 @@ main = do
   hOut <- openFile outFile WriteMode
   let miRNAs = map (B8.filter (not . isSpace)) $ filter (\e -> (not $ B8.null e) || all isSpace (B8.unpack e)) $ B8.lines miStr
       n = length miRNAs 
-      geness = splitEvery 1 $ map (B8.filter (not . isSpace)) $  B8.lines geStr
+      geness = splitEvery 1 $ map (B8.filter (not . isSpace)) $ filter (not . B8.null) $  B8.lines geStr
   putStrLn "#RefSeqID\tENSG           \tGene\tMuTaME    \tKEGG"
   hPutStrLn hOut "#RefSeqID\tENSG           \tGene\tMuTaME    \tKEGG"
   hFlush hOut
