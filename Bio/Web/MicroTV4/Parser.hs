@@ -18,12 +18,12 @@ module Bio.Web.MicroTV4.Parser
 
 import           Bio.Web.MicroTV4.Types
 import           Control.Applicative
-import           Data.Attoparsec.Char8
+import           Data.Attoparsec.Char8 hiding (take,takeWhile)
 import           Data.ByteString        (ByteString)
 import qualified Data.ByteString.Char8  as B8
 import           Data.List.Split
-import Data.List (foldl')
 import Data.Maybe
+import Data.Char (isAlpha)
 
 -- http://www.ncbi.nlm.nih.gov/sites/entrez?db=Pubmed&term=17308078[uid]%20OR%2018413726[uid]%20OR%2018413726[uid]%20OR%2017308078[uid]%20OR%2020068076[uid]%20OR%2020797623[uid]%20OR%2016530703[uid]%20OR%2019825969[uid]
 extractPUBMEDID :: ByteString -> [ByteString]
@@ -101,21 +101,30 @@ parseMR_impl = do
 parseBindingSite :: Parser BindingSite  
 parseBindingSite = do
   bt <- parseBT <* skipSpace
-  pos@(_,b) <- parsePos <* skipSpace
+  pos@(a,_) <- parsePos <* skipSpace
   sc <- double <* skipSpace
   con <- decimal <* skipSpace
   pch <- parsePCH <* skipSpace 
-  str <- parseSeedBindingSite
-  let (t,len) = fst $ foldl' (\a@((accT,acc),i) (p,l) -> 
-                               if i && p 
-                               then ((accT,l),False)
-                               else if (not p) && i
-                                    then ((accT + l,acc),i)
-                                    else a
-                             )  ((0,0),True) $ 
-                map (\s -> (B8.all (== '_') s,B8.length s)) $ 
-                B8.group $ B8.reverse str
-  return $ BS bt pos (b-t-len,b-t) sc con pch
+  (s1',s2') <- parseSeedBindingSite
+  let bSeq = B8.pack $ filter isAlpha $ 
+             map (\t ->
+                   case t of
+                     ('_','_') -> '_'
+                     (c1,'_') -> c1
+                     ('_',c2) -> c2
+                     _ -> error "Invalid char.") $ 
+             B8.zip s1' s2'
+      seed = B8.reverse $ B8.takeWhile isAlpha $ B8.dropWhile (not . isAlpha) $ B8.reverse s2'
+      lenS = B8.length seed
+      i = myFindSeedIdx seed bSeq 0
+  return $ BS bt pos bSeq (a+i,a+i+lenS-1) seed sc con pch
+  where 
+    myFindSeedIdx x y acc = let (h,t) = B8.breakSubstring x y
+                                lh = B8.length h
+                                y' =  B8.drop (B8.length x) t
+                            in if B8.null $ snd $ B8.breakSubstring x y'
+                               then acc + lh
+                               else myFindSeedIdx x y' (acc + lh + B8.length x)
          
 parseGeneSymb :: Parser ByteString  
 parseGeneSymb = 
@@ -158,14 +167,16 @@ parseGarbage = do
     parseTerminator =
       string "(miRNA) 3' " *> many1 (satisfy (not . isDigit)) *> string "5'"
   
-parseSeedBindingSite :: Parser ByteString
+parseSeedBindingSite :: Parser (ByteString,ByteString)
 parseSeedBindingSite = do
-  s <- string "Conserved species:" *> 
-      manyTill anyChar (try $ string "(3' UTR)") *> 
-      skipSpace *> string "5'" *>
-      manyTill (skipSpace *> anyChar) (try $ skipSpace *> string "3'") <* 
-      manyTill anyChar (try $ parseTerminator) <?> "ERROR: parseSeedBindingSite"
-  return $ B8.pack s 
-  where
-    parseTerminator =
-      string "(miRNA)" *> skipSpace *> string "3'" *> many1 (satisfy (not . isDigit)) *> string "5'"
+  s1 <- string "Conserved species:" *> 
+        manyTill anyChar (try $ string "(3' UTR)") *> 
+        skipSpace *> string "5'" *>
+        manyTill (skipSpace *> anyChar) (try $ skipSpace *> string "3'") 
+      
+       
+  s2' <- manyTill anyChar (try $ string "(miRNA)") 
+  () <$ skipSpace *> string "3'" *> manyTill anyChar (try $ string "5'")
+  let l = length s1
+      s2 = take l $ filter (`elem` "AUGC_") $ s2'
+  return (B8.pack s1,B8.pack s2)

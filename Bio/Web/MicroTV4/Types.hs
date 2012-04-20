@@ -51,7 +51,9 @@ data Disease = Di {
 data BindingSite = BS {
    bindingType :: !ByteString
   ,posAtUTR3' :: !(Int,Int)
+  ,bindSeq :: !ByteString
   ,seedPosAtUTR3' :: !(Int,Int)
+  ,seedSeq :: !ByteString
   ,score :: {-# UNPACK #-} !Double
   ,conservation :: {-# UNPACK #-} !Int
   ,posOnChromosome :: !PosOnCh
