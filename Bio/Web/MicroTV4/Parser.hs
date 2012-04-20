@@ -22,6 +22,7 @@ import           Data.Attoparsec.Char8
 import           Data.ByteString        (ByteString)
 import qualified Data.ByteString.Char8  as B8
 import           Data.List.Split
+import Data.List (foldl')
 import Data.Maybe
 
 -- http://www.ncbi.nlm.nih.gov/sites/entrez?db=Pubmed&term=17308078[uid]%20OR%2018413726[uid]%20OR%2018413726[uid]%20OR%2017308078[uid]%20OR%2020068076[uid]%20OR%2020797623[uid]%20OR%2016530703[uid]%20OR%2019825969[uid]
@@ -100,11 +101,21 @@ parseMR_impl = do
 parseBindingSite :: Parser BindingSite  
 parseBindingSite = do
   bt <- parseBT <* skipSpace
-  pos <- parsePos <* skipSpace
+  pos@(_,b) <- parsePos <* skipSpace
   sc <- double <* skipSpace
   con <- decimal <* skipSpace
-  pch <- parsePCH <* skipSpace <* parseGarbage
-  return $ BS bt pos sc con pch
+  pch <- parsePCH <* skipSpace 
+  str <- parseSeedBindingSite
+  let (t,len) = fst $ foldl' (\a@((accT,acc),i) (p,l) -> 
+                               if i && p 
+                               then ((accT,l),False)
+                               else if (not p) && i
+                                    then ((accT + l,acc),i)
+                                    else a
+                             )  ((0,0),True) $ 
+                map (\s -> (B8.all (== '_') s,B8.length s)) $ 
+                B8.group $ B8.reverse str
+  return $ BS bt pos (b-t-len,b-t) sc con pch
          
 parseGeneSymb :: Parser ByteString  
 parseGeneSymb = 
@@ -147,3 +158,14 @@ parseGarbage = do
     parseTerminator =
       string "(miRNA) 3' " *> many1 (satisfy (not . isDigit)) *> string "5'"
   
+parseSeedBindingSite :: Parser ByteString
+parseSeedBindingSite = do
+  s <- string "Conserved species:" *> 
+      manyTill anyChar (try $ string "(3' UTR)") *> 
+      skipSpace *> string "5'" *>
+      manyTill (skipSpace *> anyChar) (try $ skipSpace *> string "3'") <* 
+      manyTill anyChar (try $ parseTerminator) <?> "ERROR: parseSeedBindingSite"
+  return $ B8.pack s 
+  where
+    parseTerminator =
+      string "(miRNA)" *> skipSpace *> string "3'" *> many1 (satisfy (not . isDigit)) *> string "5'"

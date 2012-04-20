@@ -31,8 +31,8 @@ import Data.List
 import Data.List.Split
 import qualified Data.Map as M
 import System.IO
--- import Debug.Trace
--- testOneResultURL = "http://diana.cslab.ece.ntua.gr/DianaTools/index.php?r=microtv4/results&descr=&genes=ENSG00000149948&mirnas=hsa-let-7a&threshold=0.3"
+import Debug.Trace
+testOneResultURL = "http://diana.cslab.ece.ntua.gr/DianaTools/index.php?r=microtv4/results&descr=&genes=ENSG00000149948&mirnas=hsa-let-7a&threshold=0.3"
 -- testURL = "http://diana.cslab.ece.ntua.gr/DianaTools/index.php?r=microtv4/results&genes=ENSG00000149948%20ENSG00000179361&mirnas=hsa-let-7a%20hsa-let-7c%20hsa-miR-98%20hsa-miR-17-star%20&descr=&threshold=0.3"
 
 -- | 30 targets per page
@@ -156,8 +156,9 @@ queryMicroTV4_impl url = runShpider $ do
                           zip (zipWith ($) (repeat miRBaseID) ris) ris       
                   giMap = M.fromList $        
                           zip (zipWith ($) (repeat ensgID) gis) gis
-                  re = eitherResult $ 
-                       parse (string (pack "Also Predicted") *> parseMRs) str2
+                  re_impl = parse (string (pack "Also Predicted") *> parseMRs) str2
+                  re = eitherResult $ traceShow re_impl re_impl
+--                       parse (string (pack "Also Predicted") *> parseMRs) str2
               case re of         
                 Left s' -> error $ "ERROR: RE " ++ s'
                 Right mr_impls -> 
