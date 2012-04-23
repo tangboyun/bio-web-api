@@ -15,22 +15,23 @@
 module Main where
 
 import           Bio.Sequence.GB.Types
-import Bio.Web.DBFetch.Types
 import           Bio.Web.DBFetch
 import qualified Bio.Web.DBFetch            as DB
+import           Bio.Web.DBFetch.Types
 import qualified Bio.Web.GProfiler.GConvert as GC
 import           Bio.Web.GProfiler.Types
 import           Bio.Web.MicroTV4
 import           Bio.Web.MicroTV4.Types
 import           Control.Monad
 import qualified Data.ByteString.Char8      as B8
+import           Data.Char
 import           Data.List
 import           Data.List.Split
 import           Data.Maybe
 import           System.Environment
-import Data.Char
-import System.IO
-import Text.Printf
+import           System.IO
+import           Text.Printf
+import Control.Concurrent
 
 main :: IO ()
 main = do 
@@ -44,14 +45,21 @@ main = do
   putStrLn "#RefSeqID\tENSG           \tGene\tMuTaME    \tKEGG"
   hPutStrLn hOut "#RefSeqID\tENSG           \tGene\tMuTaME    \tKEGG"
   hFlush hOut
+  
   forM_ geness $ \genes -> do    
-    srs <- seqFetch DB.defaultPara genes
---    mapM_ print genes
-    ensgs <- fmap (map (\e -> (convertedAlias e,geneSymbol e))) $ GC.queryGConvert GC.defaultPara (B8.unwords genes)
---    mapM_ print ensgs
---    mapM_ print srs
-    mrs <- queryMicroTV4 miRNAs (fst $ unzip ensgs) 0.3
---    print mrs
+    m1 <- newEmptyMVar
+    m2 <- newEmptyMVar
+    
+    forkIO $ do
+      srs' <- seqFetch DB.defaultPara genes
+      putMVar m1 srs'
+    forkIO $ do
+      ensgs' <- fmap (map (\e -> (convertedAlias e,geneSymbol e))) $ GC.queryGConvert GC.defaultPara (B8.unwords genes)
+      mrs' <- queryMicroTV4 miRNAs (fst $ unzip ensgs') 0.3
+      putMVar m2 (ensgs',mrs')
+      
+    srs <- takeMVar m1
+    (ensgs,mrs) <- takeMVar m2
     
     let bsss = map (\e -> case e of
                           Just e' -> Just $ map (map posAtUTR3' . bindingSites) e'
@@ -79,6 +87,7 @@ main = do
           printf "%s\t%s\n" (B8.unpack g) ("Not founded by DBFetch." :: String)
           hPrintf hOut "%s\t%s\n" (B8.unpack g) ("Not founded by DBFetch." :: String)
           hFlush hOut
+
 extractUTRLength3' seq = 
   let id = locusName $ locus seq
       tp = molType $ moleculeType $ locus seq
